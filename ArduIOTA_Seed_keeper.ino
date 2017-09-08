@@ -1,4 +1,5 @@
 #include <EEPROM.h>
+//#include <LiquidCrystal.h>
 /*
  * ArduIOTA Seedkeeper
  * 
@@ -8,48 +9,61 @@
  * Adresse1 to Adresse4 > pin to access
  * Adresse5 to Adresse86 > Seed
  * 
- * Use for your own risk!!!
+ * Use on your own risk!!!
  * 
  */
 
-const int adressePinStart  = 1;
-const int adressePinStop   = 4;
-const int adresseSeedStart = 5;
-const int adresseSeedStop  = 86;
+// _______________________________________________________________________________________________________________________________________________________________PROP 
+const byte factoryLength          = 1;
+const byte pinLength              = 4;
+const byte seedLength             = 81; 
+const byte adresseFactoryDefault  = 0;
 
- 
-bool isAuth                = false; // User ist mit richtig PIN eingeloggt
-bool showMenu              = true;  // Zeig an ob das Menu gerade angezeigt wird
-bool showFactoryDefault    = false; // Zeig an ob das Menu Factzroy Default angezeigt wird
-bool setupStart            = false; // Zeigt an ob der Setup gestartet ist
-bool loopStart             = false; // Zeigt an ob der Loop gestartet ist
-bool setSeedgestartet      = false; // Gibt an ob gerade der Seed gesetzt wird
- 
- 
+const byte adressePinStart        = adresseFactoryDefault + factoryLength;
+const byte adressePinStop         = pinLength;
+const byte adresseSeedStart       = adressePinStart + pinLength;
+const byte adresseSeedStop        = adresseSeedStart + seedLength;
+
+bool isAuth                       = false; // User ist mit richtig PIN eingeloggt
+bool showMenu                     = true;  // Zeig an ob das Menu gerade angezeigt wird
+bool showFactoryDefault           = false; // Zeig an ob das Menu Factzroy Default angezeigt wird
+bool setupStart                   = false; // Zeigt an ob der Setup gestartet ist
+bool loopStart                    = false; // Zeigt an ob der Loop gestartet ist
+bool setSeedgestartet             = false; // Gibt an ob gerade der Seed gesetzt wird
+
+//int lcdOben = 0;
+//int lcdUnten = 1;
+//LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+
+// _______________________________________________________________________________________________________________________________________________________________ARDUIOTA  
 void software_Reset() // Restarts program from beginning but does not reset the peripherals and registers
 {
   bool IsAuth = false;
+  delay(500);
   asm volatile ("  jmp 0");  
 }
 
-// Gibt an ob der Arduino neu ist
-bool IfFactoryDefault()
+void FormatArduIota()
 {
-  if(String(EEPROM.read(0)) == "0")
-  {
-    return true;
-  }
-  else
-  {
-    return false;
+  for (int i = 0 ; i < EEPROM.length() ; i++) {
+    EEPROM.write(i, 0);
+    if((i % 100) == 0)
+    {
+      Serial.print(".");
+    }
   }
 }
 
-// Liest den Pin
-String GetPin()
+// _______________________________________________________________________________________________________________________________________________________________FACTORY DEFAULT
+bool IfFactoryDefault() // is factory default state
+{
+  return (String(EEPROM.read(adresseFactoryDefault)) == "0");
+}
+
+String GetPin() // get pin from eeprom
 {
   String returnPin = "";
-  for (byte i = adressePinStart; i < adressePinStop+1 ; i++) 
+  for (byte i = adressePinStart; i <= adressePinStop ; i++) 
   {
     char c = EEPROM.read(i);  
     returnPin += c;
@@ -58,159 +72,18 @@ String GetPin()
   return returnPin;
 }
 
-// Setz den Pin 
-void SetPin()
+void WriteFactoryDefault(byte b)
 {
-  byte bufferSetPin[4]; 
-  Serial.setTimeout(60000L);
-  Serial.println("Enter 4 Digit PIN (end with #)");
-  Serial.readBytesUntil('#', (char *) bufferSetPin, 4);
-  String pinEingabe = String((char*)bufferSetPin);
-
-  if(pinEingabe=="")
-  {
-    SetPin();
-  }
-  
-  for (byte i = 0; i < 4 ; i++) 
-  {
-    EEPROM.write(i + 1,bufferSetPin[i]);
-    EEPROM.write(0, 1);
-  }  
-}
-
-// Ist ein Pin auf dem Eeprom gespeichert
-bool IfPinExist()
-{
-  if(IfFactoryDefault())
-  {
-    return true;
-  }
-  else
-  {
-    return false;
-  }
-}
-
-// Verifiziert die Pineingabe
-bool VerifyPin()
-{
-  byte bufferUserEingabePin[4] = {0,0,0,0};
-  
-  Serial.setTimeout(5000L);
-  if(!setupStart)
-  {
-    Serial.println("Enter PIN to access (end with #)");
-  }
-  Serial.readBytesUntil('#', (char *) bufferUserEingabePin, 4);
-  String pinEingabe = String((char*)bufferUserEingabePin);
-
-  if(GetPin() == pinEingabe.substring(0,4))
-  {
-    isAuth = true;
-  }
-  else
-  {
-    isAuth = false;
-  }
-  
-  return isAuth;
-}
-
-// Zeigt das Menü an
-void ShowMenu()
-{
-  Serial.println("\r\nMenu\r\n1. Setze Seed\r\n2. Lese Seed\r\n3. Auslieferungszustand\r\n4. Beenden\r\n_____________");
-  Serial.print(">  ");
-  loopStart = true;  
-}
-
-// Menüeingabe
-String MenuEingabe()
-{
-  Serial.setTimeout(1000L) ; 
-  String menuEingabe = Serial.readString();
-  menuEingabe.replace("#", "");
-  Serial.print(menuEingabe);
-  return menuEingabe;
-}
-
-// Setze den Seed
-void SetSeed()
-{
-  String seedEingabe = "";
-  byte bufferSetPin[81] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-  
-  Serial.setTimeout(60000L);
-  if(!setSeedgestartet)
-  {
-    Serial.println();
-    Serial.println("Enter Seed (end with #)");
-    setSeedgestartet = true;
-  }
-  Serial.readBytesUntil('#', (char *) bufferSetPin, 81);
-  
-  seedEingabe = (String((char*)bufferSetPin)).substring(0,81);
-  
-  if(seedEingabe == "")
-  {
-    SetSeed();
-  }
-
-  for (byte i = 0; i < 81 ; i++) 
-  {
-    EEPROM.write(i + 5, bufferSetPin[i]);
-    delay(1);
-    Serial.print("Beschreibe Seed " + String(i*100/81));
-    Serial.println("%");
-  }  
-
-  Serial.print("Beschreibe Seed 100%");
-
-  String returnSeed = "";
-  for (byte i = adresseSeedStart; i <= adresseSeedStop ; i++) 
-  {
-    char c = EEPROM.read(i);  
-    returnSeed+=  c;
-  }
-  
-  Serial.println();
-  Serial.println("Seed geschrieben.");
-
-  Serial.println("Gespeichert Seed lautet: ");
-  Serial.print(returnSeed);
-  
-  setSeedgestartet = false;
-  showMenu = true;
-  ShowMenu();
-  return;
-}
-
-// Lese den gespeicherten Seed
-void GetSeed()
-{
-  String returnSeed = "";
-  for (byte i = adresseSeedStart; i <= adresseSeedStop ; i++) 
-  {
-    char c = EEPROM.read(i);  
-    returnSeed += c;
-  }
-
-  Serial.println();
-  Serial.println("Gespeichert Seed lautet: ");
-  Serial.print(returnSeed);
-  Serial.println();
-  showMenu = true;
-  ShowMenu();
-  return;
+  EEPROM.write(adresseFactoryDefault, b);
 }
 
 void SetFactoryDefault()
 {
+   //Serial.println("in SetFactoryDefault");
   if(showFactoryDefault)
   {
     Serial.println();
-    Serial.println("Arduino auf Auslieferungszustand?\r\n1. Ja\r\n2. Abbrechen\r\n");
+    Serial.println("Set to factory default (!!! >DELETE ALL< !!!)?\r\n1. Ok\r\n2. Cancel\r\n");
     showFactoryDefault = false;
   }
   
@@ -224,16 +97,14 @@ void SetFactoryDefault()
   }
   else if(eingabeLoeschen == "1")
   {
-    Serial.println("Wird gelöscht.");
+    Serial.println("Format arduIOTA seed keeper. Please wait...");
     
-    for (int i = 0 ; i < EEPROM.length() ; i++) {
-      EEPROM.write(i, 0);
-    }
+    FormatArduIota();
     
-    EEPROM.write(0, 0);
+    WriteFactoryDefault(0);
     delay(1);
     
-    Serial.println("ok!\r\nReboot...\r\n");
+    Serial.println("\r\nFormat successful!\r\nReboot...\r\n");
     delay(1);
     
     Serial.flush();
@@ -241,7 +112,7 @@ void SetFactoryDefault()
   }
   else if(eingabeLoeschen == "2")
   {
-    showMenu=true;
+    showMenu = true;
     ShowMenu();
     return;
   }
@@ -251,18 +122,197 @@ void SetFactoryDefault()
   }
 }
 
+// _______________________________________________________________________________________________________________________________________________________________PIN
+void SetPin() // Set pin to eeprom
+{
+  byte bufferSetPin[pinLength]; 
+  Serial.setTimeout(60000L);
+  Serial.print("Enter " + String(pinLength));
+  Serial.println(" digit PIN (end with #)");
+  Serial.readBytesUntil('#', (char *) bufferSetPin, pinLength);
+  String pinEingabe = String((char*) bufferSetPin);
+
+  if(pinEingabe == "")
+  {
+    SetPin();
+  }
+  
+  for (byte i = 0; i < pinLength ; i++) 
+  {
+    EEPROM.write(i + adressePinStart, bufferSetPin[i]);
+  }  
+
+  WriteFactoryDefault(1);
+}
+
+bool IfPinExist() // is pin exist = 1 otherwise 0
+{
+  if(IfFactoryDefault())
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+bool VerifyPin() //verifiy the pin
+{
+  byte bufferUserEingabePin[pinLength];
+
+  for (byte i = 0; i < pinLength ; i++) 
+  {
+    bufferUserEingabePin[i] = 0;
+  }
+  
+  Serial.setTimeout(5000L);
+  if(!setupStart)
+  {
+    Serial.println("Enter PIN to access (end with #)");
+  }
+  Serial.readBytesUntil('#', (char *) bufferUserEingabePin, pinLength);
+  String pinEingabe = (String((char*)bufferUserEingabePin)).substring(0, pinLength);
+
+ // Serial.println("pinEingabe:"+pinEingabe);
+ // Serial.println("GetPin():"+GetPin());
+
+  if(GetPin() == pinEingabe)
+  {
+    isAuth = true;
+  }
+  else
+  {
+    isAuth = false;
+  }
+  
+  return isAuth;
+}
+
+// _______________________________________________________________________________________________________________________________________________________________SEED
+void GetSeed() // get the seed
+{
+  String returnSeed = "";
+  
+  for (byte i = adresseSeedStart; i <= adresseSeedStop ; i++) 
+  {
+    char c = EEPROM.read(i);  
+    returnSeed += c;
+  }
+
+  Serial.println();
+  Serial.println("Seed: ");
+  Serial.print(returnSeed);
+  Serial.println();
+  showMenu = true;
+  ShowMenu();
+  return;
+}
+
+void SetSeed() // Set Seed
+{
+  String seedEingabe = "";
+  byte bufferSetPin[seedLength];
+  
+  for (byte i = 0; i < seedLength ; i++) 
+  {
+    bufferSetPin[i] = 0;
+  }
+  
+  Serial.setTimeout(60000L);
+  if(!setSeedgestartet)
+  {
+    Serial.println();
+    Serial.println("Enter seed (end with #)");
+    setSeedgestartet = true;
+  }
+  Serial.readBytesUntil('#', (char *) bufferSetPin, seedLength);
+  
+  seedEingabe = (String((char*)bufferSetPin)).substring(0,seedLength);
+
+  if(seedEingabe == "")
+  {
+    SetSeed();
+  }
+
+  for (byte i = 0; i < seedLength ; i++) 
+  {
+    EEPROM.write(i + adresseSeedStart, bufferSetPin[i]);
+    delay(1);
+    Serial.print("write seed " + String(i * 100 / seedLength));
+    Serial.println("%");
+  }  
+
+  Serial.print("write seed 100%");
+
+  String returnSeed = "";
+  for (byte i = adresseSeedStart; i <= adresseSeedStop ; i++) 
+  {
+    char c = EEPROM.read(i);  
+    returnSeed+=  c;
+  }
+  
+  Serial.println();
+  Serial.println("status: success.");
+
+  Serial.println("Seed: ");
+  Serial.print(returnSeed);
+  
+  setSeedgestartet = false;
+  showMenu = true;
+  ShowMenu();
+  return;
+}
+
+// _______________________________________________________________________________________________________________________________________________________________MAIN MENU
+void ShowMenu() // Show main menu
+{
+  //lcd.clear();
+  //SchreibeLcd("Set Seed", 1, lcdOben);
+  //SchreibeLcd("Get Seed", 1, lcdUnten);
+  
+  Serial.println("\r\nMenu\r\n1. Set seed\r\n2. Read seed\r\n3. Factory default\r\n4. Close\r\n_____________");
+  Serial.print(">  ");
+  loopStart = true;  
+}
+
+String MenuEingabe() // main menu choice
+{
+  Serial.setTimeout(1000L) ; 
+  String menuEingabe = Serial.readString();
+  menuEingabe.replace("#", "");
+  //Serial.print("EINGABE:"+menuEingabe);
+  return menuEingabe;
+}
+
+// _______________________________________________________________________________________________________________________________________________________________LCD
+void SchreibeLcd(String s, int offset, int v)
+{
+  //lcd.setCursor(offset, v);
+  //lcd.print(s);
+}
+
+// _______________________________________________________________________________________________________________________________________________________________SETUP
 void setup() {
   Serial.flush();
   Serial.begin(9600);
-  Serial.println(F("arduIOTA Wallet"));
   
+  Serial.println("arduIOTA Seed Keeper");
+
+
+  //char titel[] = "arduIOTA Seed Keeper";
+  //lcd.begin(16, 2);
+
+  //SchreibeLcd("arduIOTA", 4, lcdOben);
+  //SchreibeLcd("Seed  Keeper", 2, lcdUnten);
+
   while (!Serial) {
     ; 
   }
 
   if(IfFactoryDefault())
   {
-    Serial.println(F("Welcome! Please set up your Pin."));  
+    Serial.println("Welcome! Please set up your Pin.");  
     SetPin(); 
     software_Reset(); 
   }
@@ -275,6 +325,7 @@ void setup() {
   }
 }
 
+// _______________________________________________________________________________________________________________________________________________________________LOOP
 void loop() {
   String menuEingabe = ""; // Was User als Menü haben will
    
@@ -286,34 +337,44 @@ void loop() {
     }
 
     menuEingabe = MenuEingabe();
+
+    //Serial.println("menuEingabe:"+menuEingabe);
     
     if(menuEingabe == "")
     {
+      //Serial.println("leer");
       return;
     }
-    else if(menuEingabe == "1")
+    
+    if(menuEingabe == "1")
     {
+      //Serial.println("1");
       SetSeed();
     }
-    else if(menuEingabe == "2")
+    
+    if(menuEingabe == "2")
     {
+      //Serial.println("2");
       GetSeed();
-    }  
-    else if(menuEingabe == "3")
+    } 
+     
+    if(menuEingabe == "3")
     {
+      //Serial.println("3");
       showFactoryDefault = true;
       SetFactoryDefault();
     }  
-    else if(menuEingabe == "4")
+    
+    if(menuEingabe == "4")
     {
+      //Serial.println("4");
       Serial.flush();
       Serial.println();
       software_Reset();
     }    
-    else
-    {
-      return;
-    }
+
+    //Serial.println("else");
+    return;
+
   }
 }
-
