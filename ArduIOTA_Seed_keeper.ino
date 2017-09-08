@@ -17,8 +17,8 @@
 const byte factoryLength          = 1;
 const byte pinLength              = 4;
 const byte seedLength             = 81; 
-const byte adresseFactoryDefault  = 0;
 
+const byte adresseFactoryDefault  = 0;
 const byte adressePinStart        = adresseFactoryDefault + factoryLength;
 const byte adressePinStop         = pinLength;
 const byte adresseSeedStart       = adressePinStart + pinLength;
