@@ -79,7 +79,6 @@ void WriteFactoryDefault(byte b)
 
 void SetFactoryDefault()
 {
-   //Serial.println("in SetFactoryDefault");
   if(showFactoryDefault)
   {
     Serial.println();
@@ -144,7 +143,7 @@ void SetPin() // Set pin to eeprom
 
   WriteFactoryDefault(1);
 }
-
+/*
 bool IfPinExist() // is pin exist = 1 otherwise 0
 {
   if(IfFactoryDefault())
@@ -156,7 +155,7 @@ bool IfPinExist() // is pin exist = 1 otherwise 0
     return false;
   }
 }
-
+*/
 bool VerifyPin() //verifiy the pin
 {
   byte bufferUserEingabePin[pinLength];
@@ -173,9 +172,6 @@ bool VerifyPin() //verifiy the pin
   }
   Serial.readBytesUntil('#', (char *) bufferUserEingabePin, pinLength);
   String pinEingabe = (String((char*)bufferUserEingabePin)).substring(0, pinLength);
-
- // Serial.println("pinEingabe:"+pinEingabe);
- // Serial.println("GetPin():"+GetPin());
 
   if(GetPin() == pinEingabe)
   {
@@ -281,7 +277,6 @@ String MenuEingabe() // main menu choice
   Serial.setTimeout(1000L) ; 
   String menuEingabe = Serial.readString();
   menuEingabe.replace("#", "");
-  //Serial.print("EINGABE:"+menuEingabe);
   return menuEingabe;
 }
 
@@ -299,7 +294,6 @@ void setup() {
   
   Serial.println("arduIOTA Seed Keeper");
 
-
   //char titel[] = "arduIOTA Seed Keeper";
   //lcd.begin(16, 2);
 
@@ -312,14 +306,13 @@ void setup() {
 
   if(IfFactoryDefault())
   {
-    Serial.println("Welcome! Please set up your Pin.");  
+    Serial.println("Welcome! Please setup your Pin.");  
     SetPin(); 
     software_Reset(); 
   }
   
-  if(!VerifyPin()&&!isAuth)
+  if(!VerifyPin() && !isAuth)
   {
-    Serial.flush();
     setupStart = true;
     software_Reset(); 
   }
@@ -327,7 +320,7 @@ void setup() {
 
 // _______________________________________________________________________________________________________________________________________________________________LOOP
 void loop() {
-  String menuEingabe = ""; // Was User als Menü haben will
+  String menuEingabe = ""; // menu entry
    
   while(showMenu)
   {
@@ -337,44 +330,35 @@ void loop() {
     }
 
     menuEingabe = MenuEingabe();
-
-    //Serial.println("menuEingabe:"+menuEingabe);
     
     if(menuEingabe == "")
     {
-      //Serial.println("leer");
       return;
     }
     
     if(menuEingabe == "1")
     {
-      //Serial.println("1");
       SetSeed();
     }
     
     if(menuEingabe == "2")
     {
-      //Serial.println("2");
       GetSeed();
     } 
      
     if(menuEingabe == "3")
     {
-      //Serial.println("3");
       showFactoryDefault = true;
       SetFactoryDefault();
     }  
     
     if(menuEingabe == "4")
     {
-      //Serial.println("4");
       Serial.flush();
       Serial.println();
       software_Reset();
     }    
 
-    //Serial.println("else");
     return;
-
   }
 }
